@@ -253,7 +253,7 @@ if(!cfg.cats || cfg.cats.length === 0) {
 let db = [];
 let activeFilters = [];
 let currentViewMode = "CR"; 
-const webAppUrl = "https://script.google.com/macros/s/AKfycbzSwHEzeZZCQO0bs1radLhfjq96sHxaiH446aH1N1KeluYioM5plF_rL_nJWkDoHqTUkw/exec";
+const webAppUrl = "https://script.google.com/macros/s/AKfycbwq3xBcOOr9JjWuvJCquJSX1GkNuKdSSYE9as_NZzeO6tC6kHcYKvphO9auWZCwcAALlQ/exec";
 
 function init() {
     document.documentElement.style.setProperty('--p-bg', cfg.headCol);
@@ -337,15 +337,22 @@ function loadDataFromSheet() {
     }
 
     led.classList.add('saving', 'a9');
+    
+    // உங்கள் பழைய ஸ்கிரிப்ட் தரும் டேட்டாவை (எந்த வடிவமாக இருந்தாலும்) எளிதாகப் பெறும் முறை
     fetch(webAppUrl)
         .then(res => res.json())
-        .then(data => {
+        .then(response => {
+            // ஒருவேளை ரெஸ்பான்ஸ் ஆப்ஜெக்ட்டாகவோ அல்லது அரேவாகவோ வரலாம், அதை சரிபார்க்கிறோம்
+            let data = Array.isArray(response) ? response : (response.data || response.result || []);
+            
             db = Array.isArray(data) ? data.map((item, idx) => ({
                 ...item,
                 id: item.id ? String(item.id) : String(Date.now() + idx),
                 date: cleanDate(item.date),
+                mob: item.mob ? String(item.mob).trim() : "",
                 type: item.type ? String(item.type).toUpperCase() : "CR"
             })) : [];
+            
             led.classList.remove('disconnected', 'saving', 'a9');
             led.classList.add('connected');
             init();
@@ -405,7 +412,7 @@ function saveData() {
     let entry = { 
         id: editId ? String(editId) : String(Date.now()), 
         date: d, 
-        mob: document.getElementById('eMob').value || "-", 
+        mob: (document.getElementById('eMob').value || "-").trim(), 
         cat: document.getElementById('eCat').value, 
         desc: document.getElementById('eDesc').value || "-", 
         amt: parseFloat(a), 
@@ -524,8 +531,8 @@ function refresh() {
 function getFilteredData() {
     const fD = document.getElementById('fDate').value;
     const tD = document.getElementById('tDate').value;
-    const sM = document.getElementById('sMob').value;
-    const sDes = document.getElementById('sDesc').value.toLowerCase();
+    const sM = document.getElementById('sMob').value.trim();
+    const sDes = document.getElementById('sDesc').value.toLowerCase().trim();
     
     const now = new Date();
     const currentYearMonth = now.toISOString().slice(0, 7); 
@@ -538,8 +545,10 @@ function getFilteredData() {
             ((!fD || cleanTDate >= fD) && (!tD || cleanTDate <= tD)) : 
             isCurrentMonth;
             
-        const mMob = (!sM || t.mob.includes(sM));
-        const mDesc = (!sDes || t.desc.toLowerCase().includes(sDes));
+        const itemMob = t.mob ? String(t.mob).trim() : "";
+        const mMob = (!sM || itemMob.includes(sM));
+        const itemDesc = t.desc ? String(t.desc).toLowerCase() : "";
+        const mDesc = (!sDes || itemDesc.includes(sDes));
         
         let itemType = (t.type && t.type.toUpperCase() === "DR") ? "DR" : "CR";
         const mView = (currentViewMode === "BOTH" || itemType === currentViewMode);
@@ -598,7 +607,7 @@ function importData(event) {
         try {
             const data = JSON.parse(e.target.result);
             if(Array.isArray(data)) { 
-                db = data.map((item, idx) => ({ ...item, id: item.id ? String(item.id) : String(Date.now() + idx), date: cleanDate(item.date) })); 
+                db = data.map((item, idx) => ({ ...item, id: item.id ? String(item.id) : String(Date.now() + idx), date: cleanDate(item.date), mob: item.mob ? String(item.mob).trim() : "" })); 
                 refresh(); 
                 syncFullDataToSheet("import");
                 alert("Data imported and synced with Google Sheet successfully!");
